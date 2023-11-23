@@ -13,7 +13,7 @@ def evaluate(model, dataloader, criterion, device):
             ids, mask, token_type_ids, target_tags = batch['ids'], batch['mask'], batch['token_type_ids'], batch['target_tags']
             ids, mask, token_type_ids, target_tags = ids.to(device), mask.to(device), token_type_ids.to(device), target_tags.to(device)
 
-            output, loss = model(ids, mask, token_type_ids, target_tags)
+            output, loss = model(ids, mask, token_type_ids)
             
             total_loss += loss.item()
 

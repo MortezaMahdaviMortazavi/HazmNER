@@ -14,6 +14,8 @@ ARMAN_TRAIN_LABELS_PKL = 'datasets/train_labels_arman.pkl'
 ARMAN_TEST_TOKENS_PKL = 'datasets/test_tokens_arman.pkl'
 ARMAN_TEST_TOKENS_PKL = 'datasets/test_labels_arman.pkl'
 
+LOGFILE = 'logs/logfile.log'
+
 LABEL2IDX = {'B-event': 0,
  'B-fac': 1,
  'B-loc': 2,
