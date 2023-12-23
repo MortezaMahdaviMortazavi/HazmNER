@@ -1,33 +1,57 @@
 import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+import logging
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from tqdm import tqdm
 import config
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
-def evaluate(model, dataloader, criterion, device):
+def evaluate_batch(model, criterion, data, targets):
+    model.eval()
+    logits = model(data)
+    loss = criterion(logits, targets)
+    return loss.item(), logits
+
+def evaluate_epoch(model, eval_loader, criterion, device, epoch, log_file):
+    logging.basicConfig(filename=log_file, level=logging.INFO)  # Set the filename for the log file
     model.eval()
     total_loss = 0.0
+    all_targets = []
     all_predictions = []
-    all_labels = []
 
     with torch.no_grad():
-        for batch in dataloader:
-            ids, mask, token_type_ids, target_tags = batch['ids'], batch['mask'], batch['token_type_ids'], batch['target_tags']
-            ids, mask, token_type_ids, target_tags = ids.to(device), mask.to(device), token_type_ids.to(device), target_tags.to(device)
+        for batch_idx, batch in enumerate(tqdm(eval_loader)):
+            data = batch['input']
+            targets = batch['target']
+            data, targets = data.to(device), targets.to(device)
 
-            output, loss = model(ids, mask, token_type_ids)
+            loss, logits = evaluate_batch(model, criterion, data, targets)
             
-            total_loss += loss.item()
+            total_loss += loss
 
-            active_loss = mask.view(-1) == 1
-            active_logits = output.view(-1, len(config.LABEL2IDX))
-            active_labels = torch.where(active_loss, target_tags.view(-1), torch.tensor(criterion.ignore_index).type_as(target_tags))
+            predictions = torch.argmax(logits, dim=1).cpu().numpy()
+            all_targets.extend(targets.cpu().numpy())
+            all_predictions.extend(predictions)
 
-            all_predictions.extend(torch.argmax(active_logits, dim=1).cpu().numpy())
-            all_labels.extend(active_labels.cpu().numpy())
+            if batch_idx % 100 == 0:
+                logging.info(f'Eval Epoch: {epoch} [{batch_idx}/{len(eval_loader)} '
+                             f'({100. * batch_idx / len(eval_loader):.0f}%)]\tLoss: {loss:.6f}')
 
-    average_loss = total_loss / len(dataloader)
+    average_loss = total_loss / len(eval_loader)
 
-    # Calculate precision, recall, F1-score, and accuracy
-    precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_predictions, average='macro')
-    accuracy = accuracy_score(all_labels, all_predictions)
+    accuracy = accuracy_score(all_targets, all_predictions)
+    precision = precision_score(all_targets, all_predictions, average='weighted')
+    recall = recall_score(all_targets, all_predictions, average='weighted')
+    f1 = f1_score(all_targets, all_predictions, average='weighted')
 
-    return average_loss, precision, recall, f1, accuracy
+    logging.info(f'Evaluation:\tAverage Loss: {average_loss:.6f}\tAccuracy: {accuracy:.4f}\t'
+                 f'Precision: {precision:.4f}\tRecall: {recall:.4f}\tF1 Score: {f1:.4f}')
+
+    return average_loss
+
+def validate(model, eval_loader, device, log_file=config.logfile):
+    logging.basicConfig(filename=log_file, level=logging.INFO)  # Set the filename for the log file
+    criterion = nn.CrossEntropyLoss()
+    eval_loss = evaluate_epoch(model, eval_loader, criterion, device, 0, log_file)
+    logging.info(f'Evaluation:\tAverage Loss: {eval_loss:.6f}')
