@@ -34,14 +34,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None)
 def optimization(model,dataloader,criterion,optimizer,device,scheduler=None):
     for epoch in range(config.EPOCHS):
         avg_loss = train_epoch(model, dataloader, criterion, optimizer, device, scheduler)
+        torch.save(model.state_dicts,'logs/BERTNer.pth')
         print(f"Epoch {epoch + 1}/{config.EPOCHS}, Average Loss: {avg_loss}")
 
 
 
-# def train_fn():
-#     #Calculate the loss
-#     Critirion_Loss = nn.CrossEntropyLoss()
-#     active_loss = mask.view(-1) == 1
-#     active_logits = tag.view(-1, self.num_tag)
-#     active_labels = torch.where(active_loss, target_tags.view(-1), torch.tensor(Critirion_Loss.ignore_index).type_as(target_tags))
-#     loss = Critirion_Loss(active_logits, active_labels)

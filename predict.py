@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 import config
-from transformers import BertTokenizer, BertForTokenClassification
+from model import Bert
+from transformers import BertTokenizer, BertForTokenClassification,AutoModelForTokenClassification
 
 
 def predict(model, tokenizer, text):
@@ -10,15 +11,15 @@ def predict(model, tokenizer, text):
     # Tokenize input text
     tokens = tokenizer.tokenize(tokenizer.decode(tokenizer.encode(text)))
     inputs = tokenizer.encode(text, return_tensors="pt")
-    # print(tokens,"\n\n")
-    # print(inputs,"\n\n")
+    print(tokens,"\n\n")
+    print(inputs,"\n\n")
     # Make predictions
     with torch.no_grad():
-        outputs = model(inputs)
-    # print(outputs.logits.shape,"\n\n")
+        outputs = model(inputs).logits
+    print(outputs.shape,"\n\n")
     # Convert output indices to labels
-    predicted_labels = [config.IDX2LABEL[idx] for idx in torch.argmax(outputs.logits, dim=2).squeeze().tolist()]
-    # print(predicted_labels,"\n\n")
+    predicted_labels = [config.IDX2LABEL[idx] for idx in torch.argmax(outputs, dim=2).squeeze().tolist()]
+    print(predicted_labels,"\n\n")
     # Filter out 'O' labels and handle 'B' and 'I' labels
     named_entities = []
     current_entity = {"word": "", "tag": None}
@@ -43,6 +44,8 @@ def predict(model, tokenizer, text):
 
 
 text = "دفتر مرکزی شرکت پارس‌مینو در شهر اراک در استان مرکزی قرار دارد."
-model = BertForTokenClassification.from_pretrained("HooshVareLab/bert-base-parsbert-uncased", num_labels=13)
+model = AutoModelForTokenClassification.from_pretrained(config.MODEL_NAME,num_labels=13)
+model.load_state_dict(torch.load('parsbert.pth'))
 tokenizer = BertTokenizer.from_pretrained("HooshVareLab/bert-base-parsbert-uncased")
 name_entities = predict(model,tokenizer,text)
+print(name_entities)

@@ -1,57 +1,72 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-import logging
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from tqdm import tqdm
 import config
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from seqeval.metrics import classification_report
 
-def evaluate_batch(model, criterion, data, targets):
-    model.eval()
-    logits = model(data)
-    loss = criterion(logits, targets)
-    return loss.item(), logits
-
-def evaluate_epoch(model, eval_loader, criterion, device, epoch, log_file):
-    logging.basicConfig(filename=log_file, level=logging.INFO)  # Set the filename for the log file
+def evaluate(model, dataloader, criterion, device):
     model.eval()
     total_loss = 0.0
-    all_targets = []
     all_predictions = []
+    all_labels = []
 
     with torch.no_grad():
-        for batch_idx, batch in enumerate(tqdm(eval_loader)):
-            data = batch['input']
-            targets = batch['target']
-            data, targets = data.to(device), targets.to(device)
+        for batch in dataloader:
+            ids, mask, token_type_ids, target_tags = batch['ids'], batch['mask'], batch['token_type_ids'], batch['target_tags']
+            ids, mask, token_type_ids, target_tags = ids.to(device), mask.to(device), token_type_ids.to(device), target_tags.to(device)
 
-            loss, logits = evaluate_batch(model, criterion, data, targets)
-            
-            total_loss += loss
+            output = model(ids, mask, token_type_ids)
+            active_loss = mask.view(-1) == 1
+            active_logits = output.view(-1,len(config.LABEL2IDX))
+            active_labels = torch.where(active_loss, target_tags.view(-1), torch.tensor(criterion.ignore_index).type_as(target_tags))
+            loss = criterion(active_logits,active_labels)
+            total_loss += loss.item()
 
-            predictions = torch.argmax(logits, dim=1).cpu().numpy()
-            all_targets.extend(targets.cpu().numpy())
-            all_predictions.extend(predictions)
+            active_loss = mask.view(-1) == 1
+            active_logits = output.view(-1, len(config.LABEL2IDX))
+            active_labels = torch.where(active_loss, target_tags.view(-1), torch.tensor(criterion.ignore_index).type_as(target_tags))
 
-            if batch_idx % 100 == 0:
-                logging.info(f'Eval Epoch: {epoch} [{batch_idx}/{len(eval_loader)} '
-                             f'({100. * batch_idx / len(eval_loader):.0f}%)]\tLoss: {loss:.6f}')
+            all_predictions.extend(torch.argmax(active_logits, dim=1).cpu().numpy())
+            all_labels.extend(active_labels.cpu().numpy())
 
-    average_loss = total_loss / len(eval_loader)
+    average_loss = total_loss / len(dataloader)
+    precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_predictions, average='macro')
+    accuracy = accuracy_score(all_labels, all_predictions)
 
-    accuracy = accuracy_score(all_targets, all_predictions)
-    precision = precision_score(all_targets, all_predictions, average='weighted')
-    recall = recall_score(all_targets, all_predictions, average='weighted')
-    f1 = f1_score(all_targets, all_predictions, average='weighted')
+    return average_loss, precision, recall, f1, accuracy
 
-    logging.info(f'Evaluation:\tAverage Loss: {average_loss:.6f}\tAccuracy: {accuracy:.4f}\t'
-                 f'Precision: {precision:.4f}\tRecall: {recall:.4f}\tF1 Score: {f1:.4f}')
 
-    return average_loss
+def convert_to_iob_format(labels):
+    iob_labels = []
+    current_entity = {"label": None, "start": None, "end": None}
 
-def validate(model, eval_loader, device, log_file=config.logfile):
-    logging.basicConfig(filename=log_file, level=logging.INFO)  # Set the filename for the log file
-    criterion = nn.CrossEntropyLoss()
-    eval_loss = evaluate_epoch(model, eval_loader, criterion, device, 0, log_file)
-    logging.info(f'Evaluation:\tAverage Loss: {eval_loss:.6f}')
+    for i, label in enumerate(labels):
+        if label.startswith("B-"):
+            if current_entity["label"]:
+                iob_labels.append(current_entity["label"])
+            current_entity = {"label": label[2:], "start": i, "end": i}
+        elif label.startswith("I-"):
+            if current_entity["label"] == label[2:]:
+                current_entity["end"] = i
+            else:
+                iob_labels.append(current_entity["label"])
+                current_entity = {"label": None, "start": None, "end": None}
+        else:
+            if current_entity["label"]:
+                iob_labels.append(current_entity["label"])
+                current_entity = {"label": None, "start": None, "end": None}
+
+    if current_entity["label"]:
+        iob_labels.append(current_entity["label"])
+
+    return iob_labels
+
+if __name__ == "__main__":
+    true_labels = ['O', 'B-PER', 'I-PER', 'O', 'O', 'B-LOC', 'I-LOC']
+    predicted_labels = ['O', 'B-PER', 'I-PER', 'O', 'O', 'B-ORG', 'I-ORG']
+    true_iob_labels = convert_to_iob_format(true_labels)
+    predicted_iob_labels = convert_to_iob_format(predicted_labels)
+    print("True IOB Chunks:", true_iob_labels)
+    print("Predicted IOB Chunks:", predicted_iob_labels)
+    report = classification_report([true_iob_labels], [predicted_iob_labels])
+    print("Classification Report:")
+    print(report)

@@ -50,7 +50,7 @@ if __name__ == "__main__":
     """)
 
     model = Bert().to(device)
-    logging.info(f"Model initialized: {model}")
+    # logging.info(f"Model initialized: {model}")
 
     optimizer = torch.optim.AdamW(model.parameters(),lr=config.LEARNING_RATE)
     logging.info(f"Optimizer initialized: AdamW with learning rate {config.LEARNING_RATE}")
@@ -63,3 +63,5 @@ if __name__ == "__main__":
 
     optimization(model,trainloader,criterion,optimizer,device,scheduler=scheduler)
     eval_loss , eval_precision , eval_recall , eval_f1 , eval_accuracy = evaluate(model,testloader,criterion,device)
+
+    
