@@ -30,6 +30,9 @@ LABEL2IDX = {'B-event': 0,
  'I-pro': 11,
  'O': 12}
 
+IDX2LABEL = {i:k for k,i in LABEL2IDX.items()}
+print(IDX2LABEL)
+
 CLS = [101]
 SEP = [102]
 VALUE_TOKEN = [0]
