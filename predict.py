@@ -27,6 +27,7 @@ def predict(model, tokenizer, text):
     for token, label in zip(tokens, predicted_labels[1:-1]):  # Exclude [CLS] and [SEP]
         if label == 'O':
             continue
+        print(label)
         prefix, tag = label.split('-')
         
         if prefix == 'B' or (prefix == 'I' and tag != current_entity["tag"]):
@@ -45,7 +46,7 @@ def predict(model, tokenizer, text):
 
 text = "دفتر مرکزی شرکت پارس‌مینو در شهر اراک در استان مرکزی قرار دارد."
 model = AutoModelForTokenClassification.from_pretrained(config.MODEL_NAME,num_labels=13)
-model.load_state_dict(torch.load('parsbert.pth'))
+# model.load_state_dict(torch.load('parsbert.pth'))
 tokenizer = BertTokenizer.from_pretrained("HooshVareLab/bert-base-parsbert-uncased")
 name_entities = predict(model,tokenizer,text)
 print(name_entities)

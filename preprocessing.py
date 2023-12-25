@@ -41,13 +41,16 @@ def prepare_conll_data_format(
             fp = tqdm(fp)
         for line in fp:
             if line != "\n":
-                token, label = line.strip().split(sep)
-                if lower:
-                    token = token.lower()
+                try:
+                    token, label = line.strip().split(sep)
+                    if lower:
+                        token = token.lower()
 
-                # token = clean_text(token)
-                tokens.append(token)
-                labels.append(label)
+                    # token = clean_text(token)
+                    tokens.append(token)
+                    labels.append(label)
+                except:
+                    continue
             else:
                 if len(tokens) > 0:
                     token_seq.append(tokens)

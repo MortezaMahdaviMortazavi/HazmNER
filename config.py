@@ -13,7 +13,9 @@ ARMAN_TRAIN_TOKENS_PKL = 'datasets/train_tokens_arman.pkl'
 ARMAN_TRAIN_LABELS_PKL = 'datasets/train_labels_arman.pkl'
 ARMAN_TEST_TOKENS_PKL = 'datasets/test_tokens_arman.pkl'
 ARMAN_TEST_TOKENS_PKL = 'datasets/test_labels_arman.pkl'
-
+PEYMA_TRAIN = 'datasets/peyma/train.txt'
+PEYMA_TEST = 'datasets/peyma/test.txt'
+PEYMA_DEV = 'datasets/peyma/dev.txt'
 LOGFILE = 'logs/logfile.log'
 
 LABEL2IDX = {'B-event': 0,
@@ -29,6 +31,24 @@ LABEL2IDX = {'B-event': 0,
  'I-pers': 10,
  'I-pro': 11,
  'O': 12}
+
+
+# LABEL2IDX = {
+#   'O': 0,
+#  'I_PER': 1,
+#  'B_TIM': 2,
+#  'I_MON': 3,
+#  'I_PCT': 4,
+#  'B_PCT': 5,
+#  'I_TIM': 6,
+#  'I_LOC': 7,
+#  'B_PER': 8,
+#  'B_DAT': 9,
+#  'B_MON': 10,
+#  'I_ORG': 11,
+#  'B_ORG': 12,
+#  'B_LOC': 13,
+#  'I_DAT': 14}
 
 IDX2LABEL = {i:k for k,i in LABEL2IDX.items()}
 print(IDX2LABEL)

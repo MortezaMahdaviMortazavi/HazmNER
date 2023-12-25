@@ -70,3 +70,4 @@ if __name__ == "__main__":
     report = classification_report([true_iob_labels], [predicted_iob_labels])
     print("Classification Report:")
     print(report)
+    print(len(true_iob_labels),len(predicted_iob_labels))
